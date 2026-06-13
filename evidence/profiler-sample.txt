@@ -1,0 +1,17 @@
+---------------------------------------------------------------------------------------------------------------------------
+Metric                                           |        Count |          Min |          Max |          Avg |        Total
+---------------------------------------------------------------------------------------------------------------------------
+loadModel                                        |            1 |        2.71s |        2.71s |        2.71s |        2.71s
+loadModel.checksumValidationTime                 |            1 |        1.03s |        1.03s |        1.03s |        1.03s
+loadModel.modelInitializationTime                |            1 |        1.67s |        1.67s |        1.67s |        1.67s
+loadModel.request.stringify                      |            1 |          5μs |          5μs |          5μs |          5μs
+loadModel.request.totalSerialization             |            1 |        1.5ms |        1.5ms |        1.5ms |        1.5ms
+loadModel.request.zodValidation                  |            1 |        1.5ms |        1.5ms |        1.5ms |        1.5ms
+loadModel.response.jsonParse                     |            1 |        417μs |        417μs |        417μs |        417μs
+loadModel.response.totalParsing                  |            1 |        5.0ms |        5.0ms |        5.0ms |        5.0ms
+loadModel.response.zodValidation                 |            1 |        4.6ms |        4.6ms |        4.6ms |        4.6ms
+loadModel.serverWait                             |            1 |        2.73s |        2.73s |        2.73s |        2.73s
+loadModel.totalClientTime                        |            1 |        2.74s |        2.74s |        2.74s |        2.74s
+loadModel.totalLoadTime                          |            1 |        2.71s |        2.71s |        2.71s |        2.71s
+rpc.connection                                   |            1 |        2.85s |        2.85s |        2.85s |        2.85s
+---------------------------------------------------------------------------------------------------------------------------

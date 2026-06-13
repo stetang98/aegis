@@ -17,21 +17,39 @@ Fill verified facts + real SDK signatures + corrections here as you go.
 - **Architecture note:** even LOCAL inference runs via a **Bare worker process + RPC client/server** (`[sdk:server]`/`[sdk:client]`). → local vs delegated is the same RPC with a different transport; good for our P2P plan.
 
 ## C — MedPsy local
-- [ ] MedPsy-4B `modelSrc` method (built-in const / HF download / hyperdrive key): ____
-- [ ] explanation quality on a pasted lab result: ____  tok/s: ____
+- ✅ **MedPsy is NOT in the QVAC registry** (801 entries; med/psy matches are all MedGemma). Source = **Hugging Face**.
+- ✅ GGUF files confirmed: `qvac/MedPsy-1.7B-GGUF` → `medpsy-1.7b-q4_k_m-imat.gguf` (phone); `qvac/MedPsy-4B-GGUF` → `medpsy-4b-q4_k_m-imat.gguf` (laptop). Also q5_k_m/q8_0/iq3/iq4/bf16. Non-GGUF repos hold safetensors only.
+- ✅ `modelSrc` = `string | { src, name?, modelId?, registryPath?, registrySource? }` (`modelSrcInputSchema`) → load local GGUF by absolute path string.
+- Plan: `curl` GGUF → `provider/models/`, `loadModel({ modelSrc: "<abs path>", modelType: "llm" })`. (Verify bare-path-string resolves as local file at runtime.)
+- ⚠️ MedPsy = Qwen3-**Thinking** base → expect `<think>…</think>` blocks; strip/handle in Plan 2.
+- ✅ runtime: MedPsy-1.7B loads from local path (2.2s) + streams. Output FORMAT excellent (plain language, disclaimers, "ask your doctor", structured). modelSrc-as-local-path WORKS.
+- 🔴 **MedPsy-1.7B medical ACCURACY unreliable**: called fasting glucose **7.8 mmol/L "fine"** (elevated/diabetic-range, ref 3.9-5.5) and LDL **4.1 "low/good"** (ABOVE target <3.0). Only caught low hemoglobin. → **1.7B is NOT safe as the authoritative medical brain.**
+- 🔴 **CONTEXT_OVERFLOW (code 52421)**: thinking model's verbose `<think>`+answer exceeded the default context window mid-generation (prompt was tiny). → must raise context window in loadModel; consider hiding/limiting `<think>`.
+- **DESIGN IMPACT:** medical reasoning MUST use **MedPsy-4B** (downloading; verify it flags glucose/LDL correctly). 1.7B → only a basic/offline tier, never the final flagger. The 1.7B-vs-4B accuracy gap (if 4B is correct) is a *strong honest argument for P2P delegation* in health.
 
 ## D — Provider
-- [ ] provider model-serving semantics (preload vs consumer-driven): ____
-- [ ] `startQVACProvider` real params + return shape: ____  publicKey captured? ____
+- ✅ `startQVACProvider(params?: ProvideParams): Promise<{ type:"provide", success, error?, publicKey? }>` — params optional; returns `publicKey`.
+- ✅ `stopQVACProvider(): Promise<{ success, error? }>`.
+- [ ] runtime: start provider, capture publicKey; confirm serve semantics (does `ProvideParams` select the model, or serve whatever's loaded?).
 
-## E — CRUX: phone delegates to laptop
-- [ ] Expo prebuild + on-device install OK? errors: ____
-- [ ] delegated `loadModel({delegate})` + `completion` streamed tokens FROM laptop? ____
-- [ ] **BRANCH DECISION:** GREEN (DHT) / LAN-only / FALLBACK(local-only) → ____
+### Delegation API (CORRECTED vs earlier research)
+- delegate option = `{ providerPublicKey: string, timeout?: number, healthCheckTimeout?: number }` (`schemas/common.d.ts`, `heartbeat.d.ts`).
+- ⚠️ **No `fallbackToLocal` / `forceNewConnection`** in the real schema — the research/docs assumption was WRONG. → implement graceful fallback **manually**: catch `DELEGATE_CONNECTION_FAILED` (53701) / `DELEGATE_PROVIDER_ERROR` (53702) → reload the model locally. **Spec §6 `fallbackToLocal` snippet to be corrected in Plan 2.**
+- `heartbeat({ delegate })` probes a provider. Error codes: `MODEL_IS_DELEGATED 52004`, `DELEGATE_NO_FINAL_RESPONSE 53700`, `DELEGATE_CONNECTION_FAILED 53701`, `DELEGATE_PROVIDER_ERROR 53702`, `MODEL_FILE_NOT_FOUND 52201`.
+
+## E — CRUX: delegation
+### E0 — Node↔Node delegation (laptop, two processes) ✅ PASS
+- provider published a 64-hex public key; consumer `loadModel({ delegate:{ providerPublicKey, timeout } })` in **5.2s** → `completion()` streamed "delegated hello" from the provider; provider logged the delegated completion. **Delegation RPC over Hyperswarm DHT works end-to-end on Node.**
+- → The delegation MECHANISM is proven. `loadModel` type-accepts `delegate`. `QVAC_HYPERSWARM_SEED` can pin the provider key.
+### E1 — phone (Expo/Bare) as consumer  (needs physical device + operator)
+- [ ] Expo prebuild + on-device install OK?
+- [ ] delegated `loadModel({delegate})` + `completion` streams from laptop INSIDE the Bare/Expo mobile runtime?
+- [ ] **BRANCH DECISION:** GREEN (mobile DHT delegation) / LAN-only / FALLBACK (on-device MedPsy-1.7B) → ____
 
 ## F — Secondary probes
-- [ ] `ocr()` extraction quality on real report: ____  (VLM fallback needed? ____)
-- [ ] `profiler` exports TTFT + tokens/sec + load events? sample saved to evidence/? ____
+- [ ] `ocr()` extraction quality on real report: ____  (needs operator sample report; VLM fallback = SmolVLM2+mmproj)
+- ✅ **`profiler` PASS** — `enable({ mode:"verbose" })` → `exportJSON({ includeRecentEvents:true })` + `exportTable()`. Yields `completionStream.ttfb` (TTFT), `completionStream.streamDuration`, `completionStream.modelExecutionTime`, `loadModel` breakdown (checksum/init/serverWait), `rpc.connection`. Sample → `evidence/profiler-sample.{json,txt}`. **This is the evidence-bundle source; Plan 2 metrics logger wraps it.** Cached load = 2.71s.
+- API: `profiler.enable/disable/isEnabled/exportJSON/exportTable/exportSummary/getAggregates/onRecord/clear`.
 - [ ] QR pairing feasible? ____
 
 ## Real verified SDK exports (runtime introspection of @qvac/sdk@0.12.2, 2026-06-13)

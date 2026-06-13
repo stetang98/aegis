@@ -1,0 +1,206 @@
+{
+  "config": {
+    "enabled": true,
+    "mode": "verbose",
+    "includeServerBreakdown": false,
+    "operationFilters": [],
+    "maxRecentEvents": 1000
+  },
+  "aggregates": {
+    "rpc.connection": {
+      "count": 1,
+      "min": 2851.90325,
+      "max": 2851.90325,
+      "avg": 2851.90325,
+      "sum": 2851.90325,
+      "last": 2851.90325
+    },
+    "loadModel.request.zodValidation": {
+      "count": 1,
+      "min": 1.5311249999999745,
+      "max": 1.5311249999999745,
+      "avg": 1.5311249999999745,
+      "sum": 1.5311249999999745,
+      "last": 1.5311249999999745
+    },
+    "loadModel.request.stringify": {
+      "count": 1,
+      "min": 0.004791000000295753,
+      "max": 0.004791000000295753,
+      "avg": 0.004791000000295753,
+      "sum": 0.004791000000295753,
+      "last": 0.004791000000295753
+    },
+    "loadModel.request.totalSerialization": {
+      "count": 1,
+      "min": 1.5359160000002703,
+      "max": 1.5359160000002703,
+      "avg": 1.5359160000002703,
+      "sum": 1.5359160000002703,
+      "last": 1.5359160000002703
+    },
+    "loadModel.serverWait": {
+      "count": 1,
+      "min": 2729.849834,
+      "max": 2729.849834,
+      "avg": 2729.849834,
+      "sum": 2729.849834,
+      "last": 2729.849834
+    },
+    "loadModel.response.jsonParse": {
+      "count": 1,
+      "min": 0.41691700000046694,
+      "max": 0.41691700000046694,
+      "avg": 0.41691700000046694,
+      "sum": 0.41691700000046694,
+      "last": 0.41691700000046694
+    },
+    "loadModel.response.zodValidation": {
+      "count": 1,
+      "min": 4.607291999999688,
+      "max": 4.607291999999688,
+      "avg": 4.607291999999688,
+      "sum": 4.607291999999688,
+      "last": 4.607291999999688
+    },
+    "loadModel.response.totalParsing": {
+      "count": 1,
+      "min": 5.024209000000155,
+      "max": 5.024209000000155,
+      "avg": 5.024209000000155,
+      "sum": 5.024209000000155,
+      "last": 5.024209000000155
+    },
+    "loadModel.totalClientTime": {
+      "count": 1,
+      "min": 2736.864708,
+      "max": 2736.864708,
+      "avg": 2736.864708,
+      "sum": 2736.864708,
+      "last": 2736.864708
+    },
+    "loadModel": {
+      "count": 1,
+      "min": 2708,
+      "max": 2708,
+      "avg": 2708,
+      "sum": 2708,
+      "last": 2708
+    },
+    "loadModel.checksumValidationTime": {
+      "count": 1,
+      "min": 1032,
+      "max": 1032,
+      "avg": 1032,
+      "sum": 1032,
+      "last": 1032
+    },
+    "loadModel.totalLoadTime": {
+      "count": 1,
+      "min": 2708,
+      "max": 2708,
+      "avg": 2708,
+      "sum": 2708,
+      "last": 2708
+    },
+    "loadModel.modelInitializationTime": {
+      "count": 1,
+      "min": 1667,
+      "max": 1667,
+      "avg": 1667,
+      "sum": 1667,
+      "last": 1667
+    }
+  },
+  "exportedAt": 7249.661333,
+  "recentEvents": [
+    {
+      "ts": 3710.256458,
+      "op": "rpc",
+      "kind": "rpc",
+      "phase": "connection",
+      "ms": 2851.90325
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "request.zodValidation",
+      "ms": 1.5311249999999745
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "request.stringify",
+      "ms": 0.004791000000295753
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "request.totalSerialization",
+      "ms": 1.5359160000002703
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "serverWait",
+      "ms": 2729.849834
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "response.jsonParse",
+      "ms": 0.41691700000046694
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "response.zodValidation",
+      "ms": 4.607291999999688
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "response.totalParsing",
+      "ms": 5.024209000000155
+    },
+    {
+      "ts": 6447.361583,
+      "op": "loadModel",
+      "kind": "rpc",
+      "profileId": "mqcd1hbt-lzpkj2",
+      "phase": "totalClientTime",
+      "ms": 2736.864708
+    },
+    {
+      "ts": 6447.809625,
+      "op": "loadModel",
+      "kind": "handler",
+      "ms": 2708,
+      "profileId": "mqcd1hbt-lzpkj2",
+      "gauges": {
+        "checksumValidationTime": 1032,
+        "totalLoadTime": 2708,
+        "modelInitializationTime": 1667
+      },
+      "tags": {
+        "cacheHit": "true",
+        "sourceType": "registry",
+        "modelType": "llamacpp-completion"
+      }
+    }
+  ]
+}
