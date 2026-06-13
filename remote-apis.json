@@ -1,0 +1,27 @@
+{
+  "project": "Aegis",
+  "format": "Manual disclosure of every remote/network call, per QVAC hackathon rules.",
+  "ai_inference_remote_calls": [],
+  "non_ai_remote_calls": [
+    {
+      "name": "Apache LICENSE fetch",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "purpose": "one-time build-time download of license text",
+      "runtime": false
+    },
+    {
+      "name": "Model weights download (Hugging Face)",
+      "url": "https://huggingface.co/qvac/*",
+      "purpose": "one-time setup download of MedPsy / OCR / embedding weights; NOT called at inference time",
+      "runtime": false
+    },
+    {
+      "name": "npm registry",
+      "url": "https://registry.npmjs.org/*",
+      "purpose": "one-time build-time dependency install (@qvac/sdk and native addons)",
+      "runtime": false
+    }
+  ],
+  "p2p_note": "Phone<->laptop delegated inference uses the QVAC SDK's Hyperswarm DHT transport between the user's OWN devices. Peer discovery/NAT traversal use DHT bootstrap nodes + blind relays (blind relays are end-to-end encrypted passthrough by design and cannot read prompts/responses). Inference data flows only between the user's own phone and laptop. (Confirm relay encryption specifics before final submission.)",
+  "summary": "All AI inference (LLM, OCR, embeddings, RAG, optional TTS/STT) runs locally via @qvac/sdk. Zero runtime remote API calls. Core flow runs in airplane mode."
+}

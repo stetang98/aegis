@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+.expo/
+android/
+ios/
+dist/
+build/
+*.gguf
+models/
+spikes/*-report.*
+# NEVER commit real health reports (PHI). Use synthetic/anonymized samples for the demo.
+spikes/samples/
+.env
+.env.*

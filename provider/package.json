@@ -1,0 +1,21 @@
+{
+  "name": "aegis-provider",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Aegis laptop P2P provider node (QVAC SDK) — local MedPsy inference + delegated inference for the phone client",
+  "scripts": {
+    "smoke": "tsx src/smoke.ts",
+    "medpsy": "tsx src/medpsy.ts",
+    "provider": "tsx src/provider.ts"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@qvac/sdk": "^0.12.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
