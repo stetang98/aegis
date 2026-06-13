@@ -70,8 +70,7 @@ try {
 
   if (question) {
     if (!storePath || !passphrase) {
-      console.error("--ask requires --store <file> and --passphrase (or AEGIS_PASSPHRASE)");
-      process.exit(1);
+      throw new Error("--ask requires --store <file> and --passphrase (or AEGIS_PASSPHRASE)");
     }
     const records = await new HealthRecordStore(storePath, passphrase).list();
     console.log(`\n[loaded ${records.length} prior record(s) from the encrypted store]`);
