@@ -1,0 +1,18 @@
+{
+  "name": "aegis-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Aegis platform-agnostic reasoning core: injection-safe prompt assembly, think parsing, metrics/evidence, RAG orchestration. Consumed by the phone app and the laptop CLI.",
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}
