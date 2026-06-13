@@ -1,14 +1,22 @@
 import { test, expect, describe } from "vitest";
-import { toEvidenceRows, toCsv, type ProfilerSnapshot, type RunContext } from "../src/metrics/logger";
+import {
+  toEvidenceRows,
+  toCsv,
+  type ProfilerSnapshot,
+  type RunContext,
+  type CompletionStatsLike,
+} from "../src/metrics/logger";
 
 const agg = (last: number) => ({ count: 1, min: last, max: last, avg: last, sum: last, last });
+const loadSnap: ProfilerSnapshot = { aggregates: { loadModel: agg(2708) } };
+const emptySnap: ProfilerSnapshot = { aggregates: {} };
 
-const fullSnapshot: ProfilerSnapshot = {
-  aggregates: {
-    loadModel: agg(2708),
-    "completionStream.ttfb": agg(651),
-    "completionStream.streamDuration": agg(2000),
-  },
+const stats: CompletionStatsLike = {
+  timeToFirstToken: 651,
+  tokensPerSecond: 50,
+  promptTokens: 80,
+  generatedTokens: 100,
+  backendDevice: "gpu",
 };
 
 const ctx: RunContext = {
@@ -22,71 +30,68 @@ const ctx: RunContext = {
 
 describe("toEvidenceRows", () => {
   test("produces a loadModel row and a completion row", () => {
-    const rows = toEvidenceRows(fullSnapshot, ctx);
-    expect(rows.map((r) => r.event)).toEqual(["loadModel", "completion"]);
+    expect(toEvidenceRows(loadSnap, stats, ctx).map((r) => r.event)).toEqual(["loadModel", "completion"]);
   });
 
-  test("loadModel row carries load duration, no inference fields", () => {
-    const [load] = toEvidenceRows(fullSnapshot, ctx);
+  test("loadModel row carries load duration only", () => {
+    const [load] = toEvidenceRows(loadSnap, stats, ctx);
     expect(load.duration_ms).toBe(2708);
     expect(load.ttft_ms).toBe("");
     expect(load.tokens_out).toBe("");
+    expect(load.backend).toBe("");
   });
 
-  test("completion row carries TTFT, duration, prompt/tokens and computed tok/s", () => {
-    const completion = toEvidenceRows(fullSnapshot, ctx)[1];
+  test("completion row carries SDK stats: TTFT, tok/s, tokens, backend, derived duration", () => {
+    const completion = toEvidenceRows(loadSnap, stats, ctx)[1];
     expect(completion.ttft_ms).toBe(651);
-    expect(completion.duration_ms).toBe(2000);
-    expect(completion.prompt_chars).toBe(320);
+    expect(completion.tok_per_s).toBe(50);
     expect(completion.tokens_out).toBe(100);
-    expect(completion.tok_per_s).toBe(50); // 100 tokens / 2.0s
+    expect(completion.backend).toBe("gpu");
+    expect(completion.prompt_chars).toBe(80); // stats.promptTokens preferred
+    expect(completion.duration_ms).toBe(2000); // 100 tokens / 50 tok-s
     expect(completion.delegated).toBe(true);
   });
 
-  test("load-only snapshot yields just the loadModel row", () => {
-    const rows = toEvidenceRows({ aggregates: { loadModel: agg(1500) } }, ctx);
+  test("load-only (no stats) yields just the loadModel row", () => {
+    const rows = toEvidenceRows(loadSnap, undefined, ctx);
     expect(rows).toHaveLength(1);
     expect(rows[0].event).toBe("loadModel");
   });
 
-  test("no usable aggregates yields no rows", () => {
-    expect(toEvidenceRows({ aggregates: {} }, ctx)).toEqual([]);
+  test("stats-only (no load aggregate) yields just the completion row", () => {
+    const rows = toEvidenceRows(emptySnap, stats, ctx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].event).toBe("completion");
   });
 
-  test("tok/s is blank when generation duration or token count is zero", () => {
-    const snap: ProfilerSnapshot = { aggregates: { "completionStream.ttfb": agg(500), "completionStream.streamDuration": agg(0) } };
-    expect(toEvidenceRows(snap, ctx)[0].tok_per_s).toBe("");
+  test("no data yields no rows", () => {
+    expect(toEvidenceRows(emptySnap, undefined, ctx)).toEqual([]);
   });
 
-  test("tok/s blank when tokensOut is zero, but tokens_out is still recorded", () => {
-    const snap: ProfilerSnapshot = { aggregates: { "completionStream.ttfb": agg(500), "completionStream.streamDuration": agg(2000) } };
-    const r = toEvidenceRows(snap, { ...ctx, tokensOut: 0 })[0];
-    expect(r.tok_per_s).toBe("");
-    expect(r.tokens_out).toBe(0);
+  test("falls back to caller counts when stats omit token/prompt fields", () => {
+    const partial: CompletionStatsLike = { timeToFirstToken: 500 };
+    const completion = toEvidenceRows(emptySnap, partial, ctx)[0];
+    expect(completion.tokens_out).toBe(ctx.tokensOut);
+    expect(completion.prompt_chars).toBe(ctx.promptChars);
+    expect(completion.tok_per_s).toBe(""); // no tokensPerSecond
+    expect(completion.duration_ms).toBe(""); // cannot derive without rate
   });
 
-  test("non-finite timings become blank cells, not NaN/Infinity", () => {
-    const snap: ProfilerSnapshot = { aggregates: { loadModel: agg(Number.NaN) } };
-    expect(toEvidenceRows(snap, ctx)[0].duration_ms).toBe("");
+  test("non-finite load timing becomes a blank cell", () => {
+    expect(toEvidenceRows({ aggregates: { loadModel: agg(Number.NaN) } }, undefined, ctx)[0].duration_ms).toBe("");
   });
 });
 
 describe("toCsv", () => {
-  test("emits a stable header", () => {
-    const csv = toCsv([]);
-    expect(csv).toBe("ts,event,model,device,delegated,prompt_chars,tokens_out,ttft_ms,tok_per_s,duration_ms");
+  test("emits a stable header including backend", () => {
+    expect(toCsv([])).toBe(
+      "ts,event,model,device,delegated,backend,prompt_chars,tokens_out,ttft_ms,tok_per_s,duration_ms",
+    );
   });
 
-  test("serializes rows and quotes cells containing commas", () => {
-    const rows = toEvidenceRows({ aggregates: { loadModel: agg(2708) } }, { ...ctx, model: "Med,Psy 4B" });
-    const csv = toCsv(rows);
-    const dataLine = csv.split("\n")[1];
-    expect(dataLine).toContain('"Med,Psy 4B"');
-    expect(dataLine.startsWith("2026-06-13T12:00:00.000Z,loadModel,")).toBe(true);
-  });
-
-  test("doubles embedded quotes per RFC-4180 quoting", () => {
-    const rows = toEvidenceRows({ aggregates: { loadModel: agg(1000) } }, { ...ctx, model: 'Model "X"' });
-    expect(toCsv(rows).split("\n")[1]).toContain('"Model ""X"""');
+  test("quotes cells with commas and doubles embedded quotes", () => {
+    const rows = toEvidenceRows(loadSnap, undefined, { ...ctx, model: 'Med,Psy "X"' });
+    const dataLine = toCsv(rows).split("\n")[1];
+    expect(dataLine).toContain('"Med,Psy ""X"""');
   });
 });

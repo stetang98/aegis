@@ -1,9 +1,8 @@
 /**
- * Turn a QVAC SDK `profiler.exportJSON()` snapshot + run context into structured evidence rows
- * (the hackathon evidence bundle: model load + inference performance — prompt, tokens, TTFT, tok/s).
- * Timings come from the SDK profiler (authoritative); token/prompt counts come from the caller.
- * NOTE: completion timings (TTFT/streamDuration) are only present if the caller awaited the
- * completion's `final` before exporting — otherwise only a loadModel row is produced.
+ * Build the hackathon evidence bundle (model load + inference performance) as structured rows.
+ * Load timing comes from the SDK `profiler` snapshot; completion metrics (TTFT, tok/s, tokens,
+ * cpu/gpu) come from the SDK's authoritative per-call `CompletionStats` (resolved from the
+ * completion's `final`). Token/prompt sizes fall back to caller-counted values when stats omit them.
  */
 
 export interface ProfilerAggregate {
@@ -19,6 +18,15 @@ export interface ProfilerSnapshot {
   aggregates: Record<string, ProfilerAggregate>;
 }
 
+/** Mirror of @qvac/sdk CompletionStats (the fields we record). */
+export interface CompletionStatsLike {
+  timeToFirstToken?: number;
+  tokensPerSecond?: number;
+  promptTokens?: number;
+  generatedTokens?: number;
+  backendDevice?: "cpu" | "gpu";
+}
+
 export interface RunContext {
   /** ISO-8601 timestamp for the row (caller supplies; Date is fine in the host runtime). */
   isoTime: string;
@@ -26,6 +34,7 @@ export interface RunContext {
   device: string;
   delegated: boolean;
   promptChars: number;
+  /** Caller-counted stream chunks (approximate fallback only; prefer stats.generatedTokens). */
   tokensOut: number;
 }
 
@@ -35,6 +44,7 @@ export interface EvidenceRow {
   model: string;
   device: string;
   delegated: boolean;
+  backend: "cpu" | "gpu" | "";
   prompt_chars: number | "";
   tokens_out: number | "";
   ttft_ms: number | "";
@@ -43,11 +53,7 @@ export interface EvidenceRow {
 }
 
 const KEY_LOAD = "loadModel";
-const KEY_TTFT = "completionStream.ttfb";
-const KEY_GEN = "completionStream.streamDuration";
 
-// Reads `.last`; the caller enables the profiler fresh per run (which resets aggregates), so each
-// op has count === 1 and `.last` is that run's single measurement.
 function lastOf(snapshot: ProfilerSnapshot, key: string): number | undefined {
   return snapshot.aggregates[key]?.last;
 }
@@ -56,8 +62,12 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
 /** Round to integer ms, or "" for non-finite values (NaN/Infinity must not pollute the CSV). */
 const safeMs = (n: number): number | "" => (Number.isFinite(n) ? Math.round(n) : "");
 
-/** Derive evidence rows (loadModel and/or completion) from a profiler snapshot + run context. */
-export function toEvidenceRows(snapshot: ProfilerSnapshot, ctx: RunContext): EvidenceRow[] {
+/** Derive evidence rows: a loadModel row from the profiler snapshot + a completion row from stats. */
+export function toEvidenceRows(
+  snapshot: ProfilerSnapshot,
+  stats: CompletionStatsLike | undefined,
+  ctx: RunContext,
+): EvidenceRow[] {
   const rows: EvidenceRow[] = [];
 
   const loadMs = lastOf(snapshot, KEY_LOAD);
@@ -68,6 +78,7 @@ export function toEvidenceRows(snapshot: ProfilerSnapshot, ctx: RunContext): Evi
       model: ctx.model,
       device: ctx.device,
       delegated: ctx.delegated,
+      backend: "",
       prompt_chars: "",
       tokens_out: "",
       ttft_ms: "",
@@ -76,21 +87,22 @@ export function toEvidenceRows(snapshot: ProfilerSnapshot, ctx: RunContext): Evi
     });
   }
 
-  const ttft = lastOf(snapshot, KEY_TTFT);
-  const gen = lastOf(snapshot, KEY_GEN);
-  if (ttft !== undefined || gen !== undefined) {
-    const canRate = gen !== undefined && gen > 0 && ctx.tokensOut > 0;
+  if (stats) {
+    const tps = stats.tokensPerSecond;
+    const gen = stats.generatedTokens ?? ctx.tokensOut;
+    const durationMs = tps !== undefined && tps > 0 && gen > 0 ? Math.round((gen / tps) * 1000) : undefined;
     rows.push({
       ts: ctx.isoTime,
       event: "completion",
       model: ctx.model,
       device: ctx.device,
       delegated: ctx.delegated,
-      prompt_chars: ctx.promptChars,
-      tokens_out: ctx.tokensOut,
-      ttft_ms: ttft !== undefined ? safeMs(ttft) : "",
-      tok_per_s: canRate ? round1(ctx.tokensOut / (gen / 1000)) : "",
-      duration_ms: gen !== undefined ? safeMs(gen) : "",
+      backend: stats.backendDevice ?? "",
+      prompt_chars: stats.promptTokens ?? ctx.promptChars,
+      tokens_out: gen,
+      ttft_ms: stats.timeToFirstToken !== undefined ? safeMs(stats.timeToFirstToken) : "",
+      tok_per_s: tps !== undefined ? round1(tps) : "",
+      duration_ms: durationMs ?? "",
     });
   }
 
@@ -103,6 +115,7 @@ const CSV_COLUMNS: (keyof EvidenceRow)[] = [
   "model",
   "device",
   "delegated",
+  "backend",
   "prompt_chars",
   "tokens_out",
   "ttft_ms",
