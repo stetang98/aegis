@@ -67,6 +67,9 @@ export class HealthRecordStore {
   }
 
   private async addUnsafe(record: HealthRecord): Promise<void> {
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(record.ts)) {
+      throw new Error("record.ts must be an ISO-8601 timestamp");
+    }
     const records = await this.list();
     records.push(record);
     await mkdir(dirname(this.filePath), { recursive: true });

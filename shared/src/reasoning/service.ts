@@ -1,13 +1,10 @@
 /**
- * explainReport — the product core: report text -> injection-safe history -> (delegated or local)
- * MedPsy completion -> answer (+ hidden reasoning) -> profiler/stats evidence. Includes manual
- * graceful fallback: if a delegated run fails to reach the provider (SDK codes 53701/53702), it
- * transparently retries locally.
- *
- * The LLM is injected via the `LlmClient` interface so this orchestration is fully unit-testable with a
- * mock; the real @qvac/sdk-backed client implements the same interface.
+ * Reasoning service: report -> explanation, and cross-history question -> answer. Both build an
+ * injection-safe history, run a (delegated or local) MedPsy completion with manual graceful fallback
+ * (SDK codes 53701/53702 -> retry on-device), guarantee `<think>` is stripped from the answer, and
+ * produce profiler/stats evidence. The LLM is injected via LlmClient so this is fully unit-testable.
  */
-import { buildExplainHistory, type ChatMessage } from "./prompt";
+import { buildExplainHistory, buildFollowUpHistory, type ChatMessage, type PriorRecord } from "./prompt";
 import { splitThink } from "./think";
 import {
   toEvidenceRows,
@@ -19,17 +16,14 @@ import {
 
 /** What a completion resolves to (mapped from the SDK's CompletionFinal). */
 export interface CompletionOutcome {
-  /** SDK answer with `<think>` already stripped. */
   contentText: string;
   thinkingText?: string;
-  /** Full raw text including any `<think>` block — used as a fallback for answer/thinking. */
   rawText: string;
   stats?: CompletionStatsLike;
 }
 
 export interface CompletionStream {
   tokenStream: AsyncIterable<string>;
-  /** Resolves when the completion fully finishes (answer text, reasoning, and stats). */
   final: Promise<CompletionOutcome>;
 }
 
@@ -45,24 +39,42 @@ export interface LlmClient {
   snapshot(): ProfilerSnapshot;
 }
 
-export interface ExplainParams {
-  reportText: string;
-  client: LlmClient;
-  /** Path or descriptor for the model to load. */
-  modelSrc: string;
-  /** Clean display name for evidence (e.g. "MedPsy-4B"). */
-  model: string;
-  device: string;
-  delegate?: DelegateConfig;
-  /** ISO-8601 timestamp for evidence rows (caller supplies). */
-  isoTime: string;
-}
-
 export interface ExplainResult {
   answer: string;
   thinking: string | null;
   servedBy: "delegated" | "local";
   evidence: EvidenceRow[];
+}
+
+export interface ExplainParams {
+  reportText: string;
+  client: LlmClient;
+  modelSrc: string;
+  model: string;
+  device: string;
+  delegate?: DelegateConfig;
+  isoTime: string;
+}
+
+export interface FollowUpParams {
+  question: string;
+  records: PriorRecord[];
+  client: LlmClient;
+  modelSrc: string;
+  model: string;
+  device: string;
+  delegate?: DelegateConfig;
+  isoTime: string;
+}
+
+interface ReasoningCommon {
+  client: LlmClient;
+  modelSrc: string;
+  model: string;
+  device: string;
+  delegate?: DelegateConfig;
+  isoTime: string;
+  promptChars: number;
 }
 
 /** SDK delegate-failure codes (see spikes/day1-findings.md). */
@@ -74,58 +86,80 @@ function isDelegateFailure(err: unknown): boolean {
 }
 
 async function runOnce(
-  params: ExplainParams,
+  common: ReasoningCommon,
   delegate: DelegateConfig | undefined,
+  history: ChatMessage[],
 ): Promise<{ outcome: CompletionOutcome; tokens: number; modelId: string }> {
-  const history = buildExplainHistory(params.reportText);
-  const modelId = await params.client.loadLLM({ src: params.modelSrc, delegate });
+  const modelId = await common.client.loadLLM({ src: common.modelSrc, delegate });
   try {
-    const run = params.client.streamCompletion(modelId, history);
+    const run = common.client.streamCompletion(modelId, history);
     void run.final.catch(() => undefined); // absorb a possible rejection if the stream errors first
     let tokens = 0;
     for await (const _tok of run.tokenStream) {
       tokens++;
     }
-    const outcome = await run.final; // authoritative answer text + reasoning + stats
+    const outcome = await run.final;
     return { outcome, tokens, modelId };
   } catch (err) {
-    await params.client.unload(modelId).catch(() => undefined);
+    await common.client.unload(modelId).catch(() => undefined);
     throw err;
   }
 }
 
-export async function explainReport(params: ExplainParams): Promise<ExplainResult> {
-  let servedBy: "delegated" | "local" = params.delegate ? "delegated" : "local";
+async function runReasoning(common: ReasoningCommon, history: ChatMessage[]): Promise<ExplainResult> {
+  let servedBy: "delegated" | "local" = common.delegate ? "delegated" : "local";
   let run: { outcome: CompletionOutcome; tokens: number; modelId: string };
   try {
-    run = await runOnce(params, params.delegate);
+    run = await runOnce(common, common.delegate, history);
   } catch (err) {
-    if (params.delegate && isDelegateFailure(err)) {
+    if (common.delegate && isDelegateFailure(err)) {
       servedBy = "local"; // graceful fallback: provider unreachable -> run on-device
-      run = await runOnce(params, undefined);
+      run = await runOnce(common, undefined, history);
     } else {
       throw err;
     }
   }
 
-  // ALWAYS run our tested think-stripper over the SDK's answer text: some models leave the
-  // <think> block in contentText, and the answer surface must never contain reasoning.
+  // ALWAYS run our tested think-stripper: some models leave the <think> block in contentText.
   const parsed = splitThink(run.outcome.contentText.trim() || run.outcome.rawText);
   const answer = parsed.answer;
   const sdkThinking = run.outcome.thinkingText?.trim();
   const thinking = sdkThinking && sdkThinking.length > 0 ? sdkThinking : parsed.thinking;
 
   const ctx: RunContext = {
-    isoTime: params.isoTime,
-    model: params.model,
-    device: params.device,
+    isoTime: common.isoTime,
+    model: common.model,
+    device: common.device,
     delegated: servedBy === "delegated",
-    promptChars: params.reportText.length,
+    promptChars: common.promptChars,
     tokensOut: run.tokens,
   };
-  // Unload before snapshotting: the profiler snapshot is accumulative and does not need the model
-  // loaded, and this guarantees the model is freed even if snapshot()/toEvidenceRows throws.
-  await params.client.unload(run.modelId);
-  const evidence = toEvidenceRows(params.client.snapshot(), run.outcome.stats, ctx);
+  // Unload before snapshotting so the model is freed even if snapshot()/toEvidenceRows throws.
+  await common.client.unload(run.modelId);
+  const evidence = toEvidenceRows(common.client.snapshot(), run.outcome.stats, ctx);
   return { answer, thinking, servedBy, evidence };
+}
+
+function commonOf(p: ExplainParams | FollowUpParams, promptChars: number): ReasoningCommon {
+  return {
+    client: p.client,
+    modelSrc: p.modelSrc,
+    model: p.model,
+    device: p.device,
+    delegate: p.delegate,
+    isoTime: p.isoTime,
+    promptChars,
+  };
+}
+
+/** Explain a single lab report in plain language with evidence. */
+export async function explainReport(params: ExplainParams): Promise<ExplainResult> {
+  const history = buildExplainHistory(params.reportText);
+  return runReasoning(commonOf(params, history[1].content.length), history);
+}
+
+/** Answer a cross-history follow-up question using the patient's prior records as context. */
+export async function answerFollowUp(params: FollowUpParams): Promise<ExplainResult> {
+  const history = buildFollowUpHistory(params.question, params.records);
+  return runReasoning(commonOf(params, history[1].content.length), history);
 }

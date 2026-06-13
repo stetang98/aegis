@@ -73,4 +73,9 @@ describe("HealthRecordStore", () => {
     await Promise.all([s.add(rec("1", "a")), s.add(rec("2", "b")), s.add(rec("3", "c"))]);
     expect((await s.list()).map((r) => r.id).sort()).toEqual(["1", "2", "3"]);
   });
+
+  test("rejects a record with a non-ISO timestamp", async () => {
+    const s = new HealthRecordStore(newPath(), PW);
+    await expect(s.add({ ...rec("1", "x"), ts: "not-a-date" })).rejects.toThrow(/ISO-8601/);
+  });
 });

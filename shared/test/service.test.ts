@@ -1,12 +1,14 @@
 import { test, expect, describe } from "vitest";
 import {
   explainReport,
+  answerFollowUp,
   type LlmClient,
   type CompletionStream,
   type ExplainParams,
+  type FollowUpParams,
 } from "../src/reasoning/service";
 import type { ProfilerSnapshot, CompletionStatsLike } from "../src/metrics/logger";
-import type { ChatMessage } from "../src/reasoning/prompt";
+import type { ChatMessage, PriorRecord } from "../src/reasoning/prompt";
 
 const agg = (last: number) => ({ count: 1, min: last, max: last, avg: last, sum: last, last });
 const SNAP: ProfilerSnapshot = { aggregates: { loadModel: agg(2000) } };
@@ -156,5 +158,52 @@ describe("explainReport", () => {
     const mock = new MockClient({ raw: "ans", contentText: "ans", stats: STATS, snapshotThrows: true });
     await expect(explainReport(params(mock))).rejects.toThrow();
     expect(mock.unloads).toHaveLength(1);
+  });
+});
+
+describe("answerFollowUp", () => {
+  const records: PriorRecord[] = [
+    { ts: "2026-01-01", reportText: "LDL 4.1", answer: "LDL elevated" },
+    { ts: "2026-06-01", reportText: "LDL 3.2", answer: "improving" },
+  ];
+  const fparams = (client: LlmClient, extra: Partial<FollowUpParams> = {}): FollowUpParams => ({
+    question: "How is my LDL trending?",
+    records,
+    client,
+    modelSrc: "/models/medpsy-4b.gguf",
+    model: "MedPsy-4B",
+    device: "laptop-M4",
+    isoTime: "2026-06-13T12:00:00.000Z",
+    ...extra,
+  });
+
+  test("answers a cross-history question, think-stripped, with evidence", async () => {
+    const mock = new MockClient({
+      raw: "<think>r</think>Your LDL is trending down.",
+      contentText: "Your LDL is trending down.",
+      thinkingText: "r",
+      stats: STATS,
+    });
+    const r = await answerFollowUp(fparams(mock));
+    expect(r.answer).toBe("Your LDL is trending down.");
+    expect(r.thinking).toBe("r");
+    expect(r.servedBy).toBe("local");
+    expect(r.evidence.find((row) => row.event === "completion")).toBeDefined();
+    expect(mock.unloads).toHaveLength(1);
+  });
+
+  test("sends prior records + the question to the model", async () => {
+    const mock = new MockClient({ raw: "ok", contentText: "ok" });
+    await answerFollowUp(fparams(mock));
+    expect(mock.lastHistory?.[0].role).toBe("system");
+    expect(mock.lastHistory?.[1].content).toContain("LDL 4.1");
+    expect(mock.lastHistory?.[1].content).toContain("How is my LDL trending?");
+  });
+
+  test("falls back to local on delegate failure (53701)", async () => {
+    const mock = new MockClient({ raw: "ans", contentText: "ans", failDelegateLoadCode: 53701 });
+    const r = await answerFollowUp(fparams(mock, { delegate: { providerPublicKey: KEY } }));
+    expect(r.servedBy).toBe("local");
+    expect(mock.loads).toHaveLength(2);
   });
 });
