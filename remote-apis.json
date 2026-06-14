@@ -20,6 +20,18 @@
       "url": "https://registry.npmjs.org/*",
       "purpose": "one-time build-time dependency install (@qvac/sdk and native addons)",
       "runtime": false
+    },
+    {
+      "name": "React Native prebuilt artifacts (Maven Central)",
+      "url": "https://repo1.maven.org/maven2/com/facebook/react/react-native-artifacts/*",
+      "purpose": "one-time iOS build-time download of RN 0.85 prebuilt core/hermes/dependency tarballs during pod install; NOT called at runtime",
+      "runtime": false
+    },
+    {
+      "name": "CocoaPods CDN / Homebrew (build host only)",
+      "url": "https://cdn.cocoapods.org/* , https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles/*",
+      "purpose": "one-time macOS build-host toolchain/pod setup; never part of the app or runtime",
+      "runtime": false
     }
   ],
   "p2p_note": "Phone<->laptop delegated inference uses the QVAC SDK's Hyperswarm DHT transport between the user's OWN devices. Peer discovery/NAT traversal use DHT bootstrap nodes + blind relays (blind relays are end-to-end encrypted passthrough by design and cannot read prompts/responses). Inference data flows only between the user's own phone and laptop. (Confirm relay encryption specifics before final submission.)",
