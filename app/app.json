@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.app"
+      "bundleIdentifier": "com.stetang.aegis"
     },
     "plugins": [
       [
@@ -22,7 +22,8 @@
           }
         }
       ],
-      "@qvac/sdk/expo-plugin"
+      "@qvac/sdk/expo-plugin",
+      "expo-font"
     ],
     "android": {
       "adaptiveIcon": {
