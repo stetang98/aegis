@@ -179,6 +179,12 @@ cd shared && npm test        # 73 core tests
 
 ---
 
+## Prior Work
+
+Disclosed per the hackathon rules. **All Aegis application code in this repository was written during the hackathon window** (June 2026). Pre-existing components are **third-party open-source dependencies only** — `@qvac/sdk` (Apache-2.0, the required SDK), Expo / React Native, and standard libraries (see `package.json` / `package-lock.json`). No pre-existing Aegis code, proprietary components, or self-trained models were carried in; models are downloaded from the QVAC / Hugging Face registries at setup. Judged work is entirely within the hackathon.
+
+---
+
 ## Links
 
 - **GitHub repo:** https://github.com/stetang98/aegis

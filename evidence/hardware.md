@@ -15,8 +15,8 @@ The two devices used to build and verify Aegis. All inference runs on these — 
 
 | | |
 |---|---|
-| Model | MacBook Pro |
-| Chip | Apple M4 |
+| Model | MacBook Pro (`Mac16,1`) |
+| Chip | Apple M4 — 10 cores (4 performance + 6 efficiency) |
 | Memory | 16 GB |
 | OS | macOS 26.1 (build 25B78) |
 | Toolchain | Xcode 26.0 · Node 24.12 · `@qvac/sdk` 0.12.2 |
