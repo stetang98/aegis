@@ -179,19 +179,6 @@ cd shared && npm test        # 73 core tests
 
 ---
 
-## Repository & push status
-
-A secret scan of the tracked repository found **no hardcoded API keys, tokens, credentials, private keys, or Apple signing identifiers**, and a comprehensive `.gitignore` (excludes `node_modules/`, `.expo/`, `ios/`, `android/`, `*.gguf`, `models/`, `.env*`; `app/.gitignore` additionally excludes `*.p8/*.p12/*.key/*.mobileprovision`). **Verdict: safe to push as a public repo (GO).**
-
-Non-blocking cleanups before going public:
-- **MEDIUM** — absolute home-directory paths (`/Users/stetang/Desktop/QVAC`) hardcoded in `docs/superpowers/plans/2026-06-13-aegis-day1-spike-and-foundation.md`; replace with relative paths or `$REPO_ROOT` for portability. (Documentation only — not an executed secret.)
-- **LOW** — bundle identifier `com.stetang.aegis` contains a personal name (keep if intentional as creator attribution).
-- **LOW** — Twitter handle `@Stetang3438` in `docs/build-in-public.md` (intentional for public marketing; no action needed).
-
-None of these block the push.
-
----
-
 ## Links
 
 - **GitHub repo:** `<GITHUB_REPO_URL>`
