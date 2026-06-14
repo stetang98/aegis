@@ -21,7 +21,7 @@
 ## Repo file structure (locked Day-1 subset)
 
 ```
-QVAC/                         # repo root = /Users/stetang/Desktop/QVAC
+QVAC/                         # repo root = $REPO_ROOT
 ├── LICENSE                   # Apache-2.0
 ├── README.md                 # skeleton Day 1; filled Day 6
 ├── remote-apis.json          # [] — zero remote calls (the flex)
@@ -54,7 +54,7 @@ QVAC/                         # repo root = /Users/stetang/Desktop/QVAC
 
 Run:
 ```bash
-cd /Users/stetang/Desktop/QVAC && git init -b main && git status
+cd $REPO_ROOT && git init -b main && git status
 ```
 Expected: empty repo on `main`, `docs/` shown as untracked.
 
@@ -62,7 +62,7 @@ Expected: empty repo on `main`, `docs/` shown as untracked.
 
 Fetch the canonical text (one-time, non-AI utility fetch — will be disclosed):
 ```bash
-curl -fsSL https://www.apache.org/licenses/LICENSE-2.0.txt -o /Users/stetang/Desktop/QVAC/LICENSE && wc -l /Users/stetang/Desktop/QVAC/LICENSE
+curl -fsSL https://www.apache.org/licenses/LICENSE-2.0.txt -o $REPO_ROOT/LICENSE && wc -l $REPO_ROOT/LICENSE
 ```
 Expected: ~202 lines. Then append the copyright line to the boilerplate section as appropriate (year 2026, name to confirm with operator).
 
@@ -109,7 +109,7 @@ Create `README.md` with headers only (filled Day 6): Title + one-liner, Tracks, 
 
 Run `/code-review` on the diff (scaffolding/config review). Then:
 ```bash
-cd /Users/stetang/Desktop/QVAC && git add -A && git commit -m "chore: repo foundation (license, gitignore, disclosure, readme skeleton)"
+cd $REPO_ROOT && git add -A && git commit -m "chore: repo foundation (license, gitignore, disclosure, readme skeleton)"
 ```
 
 ---
@@ -127,7 +127,7 @@ Run: `node -v` — Expected: ≥ v22.17. If lower, install via nvm (`nvm install
 - [ ] **Step 2: Init provider package**
 
 ```bash
-mkdir -p /Users/stetang/Desktop/QVAC/provider/src && cd /Users/stetang/Desktop/QVAC/provider && npm init -y && npm pkg set type=module && npm i @qvac/sdk && npm i -D tsx typescript
+mkdir -p $REPO_ROOT/provider/src && cd $REPO_ROOT/provider && npm init -y && npm pkg set type=module && npm i @qvac/sdk && npm i -D tsx typescript
 ```
 Expected: `@qvac/sdk@0.12.x` in dependencies; native addons (`@qvac/llm-llamacpp`, etc.) installed. **Record any install errors verbatim** in findings — native builds can fail and that's a real signal.
 
@@ -159,7 +159,7 @@ await unloadModel({ modelId });
 
 - [ ] **Step 2: Run & observe**
 
-Run: `cd /Users/stetang/Desktop/QVAC/provider && npx tsx src/smoke.ts`
+Run: `cd $REPO_ROOT/provider && npx tsx src/smoke.ts`
 Expected: progress logs, a model id, streamed tokens, clean exit.
 **If symbols differ** (e.g., no `LLAMA_3_2_1B_INST_Q4_0` export, or `completion` shape differs) → open `docs.qvac.tether.io/reference/api/`, fix, and record the **real** signatures in findings. This is the moment doc-knowledge becomes verified-knowledge.
 
@@ -215,7 +215,7 @@ Run (engineer, background): `npx tsx src/provider.ts` — copy the printed `PROV
 
 ### Task E1: Create the Expo app and add the SDK (engineer)
 
-- [ ] **Step 1:** `cd /Users/stetang/Desktop/QVAC && npx create-expo-app@latest app && cd app`
+- [ ] **Step 1:** `cd $REPO_ROOT && npx create-expo-app@latest app && cd app`
 - [ ] **Step 2:** `npx expo install @qvac/sdk react-native-bare-kit` (+ any deps the docs' Expo tutorial lists: `expo-file-system`, `expo-device`, `expo-build-properties`).
 - [ ] **Step 3:** Add `@qvac/sdk/expo-plugin` to `app.json` `plugins` (per docs). Add `expo-build-properties` for arm64/Metal/Vulkan if required.
 - [ ] **Step 4:** Write a minimal one-screen UI: a "Run delegated" button, a "Run local" button, a text area for streamed output, and a field/QR-input for the provider public key.
