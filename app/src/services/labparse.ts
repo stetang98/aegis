@@ -38,7 +38,8 @@ export interface ParsedLab {
 // and unit/range use negated classes (no `(`/`)`) to avoid backtracking on untrusted input.
 const NUM = "\\d+(?:\\.\\d+)?";
 const LINE_RE = new RegExp(
-  `^\\s*([A-Za-z][A-Za-z0-9 /+%-]*?)\\s*\\.{2,}\\s*(${NUM})\\s*([^(]+?)\\s*\\(\\s*ref\\.?\\s*([^)]+)\\)`,
+  // value must be a complete number (negative lookahead rejects malformed "1.2.3")
+  `^\\s*([A-Za-z][A-Za-z0-9 /+%-]*?)\\s*\\.{2,}\\s*(${NUM})(?![\\d.])\\s*([^(]+?)\\s*\\(\\s*ref\\.?\\s*([^)]+)\\)`,
   "i",
 );
 

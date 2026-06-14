@@ -49,9 +49,7 @@ export const palette = {
 
 // Font family names match the @expo-google-fonts exports loaded in App.tsx.
 export const font = {
-  displayBlack: "Fraunces_900Black",
   display: "Fraunces_600SemiBold",
-  displayBold: "Fraunces_700Bold",
   displayItalic: "Fraunces_700Bold_Italic",
   regular: "Inter_400Regular",
   medium: "Inter_500Medium",
@@ -86,7 +84,6 @@ export const type = {
   h2: { fontFamily: font.semibold, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 },
   h3: { fontFamily: font.semibold, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
   body: { fontFamily: font.regular, fontSize: 16, lineHeight: 25 },
-  bodyMedium: { fontFamily: font.medium, fontSize: 16, lineHeight: 25 },
   bodyStrong: { fontFamily: font.semibold, fontSize: 16, lineHeight: 24 },
   small: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
   smallStrong: { fontFamily: font.semibold, fontSize: 14, lineHeight: 20 },
@@ -122,5 +119,3 @@ export const shadow = {
   },
 } as const;
 
-export const theme = { palette, font, space, radius, type, shadow } as const;
-export type Theme = typeof theme;
