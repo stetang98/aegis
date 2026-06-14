@@ -8,7 +8,7 @@
  * The two-button "spike" (verified on-device GPU inference: TTFT 432ms, 44.6 tok/s)
  * lives in git history; this is the real interface.
  */
-import { View } from "react-native";
+import { View, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
@@ -25,7 +25,15 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { HomeScreen } from "./src/screens/HomeScreen";
+import { ResultScreen } from "./src/screens/ResultScreen";
 import { palette } from "./src/theme/tokens";
+
+// Web-only design-preview switch (e.g. localhost:8081?screen=result).
+// On a device this is always null, so Home is the entry screen.
+const previewScreen =
+  Platform.OS === "web" && typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("screen")
+    : null;
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -42,7 +50,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      {fontsLoaded ? <HomeScreen /> : <View style={{ flex: 1, backgroundColor: palette.bg }} />}
+      {fontsLoaded ? (
+        previewScreen === "result" ? <ResultScreen /> : <HomeScreen />
+      ) : (
+        <View style={{ flex: 1, backgroundColor: palette.bg }} />
+      )}
     </SafeAreaProvider>
   );
 }
