@@ -114,3 +114,30 @@ export function parseLabReport(text: string): ParsedLab {
   const flaggedCount = values.filter((v) => v.tone !== "normal").length;
   return { values, flaggedCount, inRangeCount: values.length - flaggedCount };
 }
+
+/**
+ * Render parsed values as an AUTHORITATIVE findings block for the model prompt. The small
+ * model tends to re-judge normal/abnormal from raw numbers and gets it wrong (e.g. calling an
+ * out-of-range glucose "normal"); feeding it our deterministic classifications keeps the prose
+ * summary consistent with the flag cards. Returns "" when nothing parsed (caller omits it).
+ */
+export function formatFindings(parsed: ParsedLab): string {
+  if (parsed.values.length === 0) return "";
+  // Safe to embed unsanitized in the prompt: name/valueText/unit/range come from LINE_RE
+  // capture groups (no '(' , and the per-line split bounds each field to a single line), so a
+  // crafted report can't smuggle a newline, forge a [[PATIENT_REPORT]] marker, or inject an
+  // instruction line through these values. Keep this guarantee if the parser regex changes.
+  const dirOf: Record<Tone, string> = {
+    low: "BELOW range (low)",
+    high: "ABOVE range (high)",
+    normal: "within range (normal)",
+  };
+  const lines = parsed.values.map(
+    (v) => `- ${v.name}: ${v.valueText} ${v.unit} (reference ${v.range.text}) — ${dirOf[v.tone]}`,
+  );
+  return (
+    "AUTHORITATIVE findings, computed deterministically from the report. Use these exact " +
+    "classifications — do NOT re-judge whether a value is normal or abnormal:\n" +
+    lines.join("\n")
+  );
+}

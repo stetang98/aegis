@@ -94,10 +94,20 @@ export function sanitizeReport(reportText: string): string {
   return result;
 }
 
-/** Build [system, user] history for explaining a lab report, with the report safely contained. */
-export function buildExplainHistory(reportText: string): ChatMessage[] {
+/**
+ * Build [system, user] history for explaining a lab report, with the report safely contained.
+ * `findings` (optional) is our deterministic, AUTHORITATIVE classification of each value; when
+ * present it's injected so the model's prose can't contradict the flag cards. The no-findings
+ * branch is byte-identical to the original (keeps existing callers/tests stable).
+ */
+export function buildExplainHistory(reportText: string, findings?: string): ChatMessage[] {
   const report = sanitizeReport(reportText);
-  const user = `${USER_PREAMBLE}\n${OPEN}\n${report}\n${CLOSE}`;
+  const hasFindings = findings !== undefined && findings.trim().length > 0;
+  const user = hasFindings
+    ? `${USER_PREAMBLE}\n\n${findings.trim()}\n\n${OPEN}\n${report}\n${CLOSE}\n\n` +
+      "Base your explanation on the authoritative findings above: state each flagged value's " +
+      "direction correctly and never describe a flagged value as normal."
+    : `${USER_PREAMBLE}\n${OPEN}\n${report}\n${CLOSE}`;
   return [
     { role: "system", content: SYSTEM_INSTRUCTION },
     { role: "user", content: user },

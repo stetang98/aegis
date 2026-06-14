@@ -9,7 +9,7 @@
  */
 import { loadModel, completion, unloadModel, LLAMA_3_2_1B_INST_Q4_0 } from "@qvac/sdk";
 import { buildExplainHistory, buildFollowUpHistory, splitThink, type ChatMessage } from "./reasoning";
-import type { ParsedLab } from "./labparse";
+import { formatFindings, type ParsedLab } from "./labparse";
 import type { DelegateConfig, ExplainOptions, ExplainOutcome, HealthRecord, QvacService } from "./types";
 
 /** MedPsy-1.7B GGUF (Qwen3-Thinking base). Swap in via opts.modelSrc after device-verifying the download. */
@@ -19,14 +19,37 @@ export const MEDPSY_1_7B_SRC =
 /** modelSrc accepts a registry model descriptor (object) or a URL/path string. */
 type ModelSrc = string | typeof LLAMA_3_2_1B_INST_Q4_0;
 const DEFAULT_MODEL_SRC: ModelSrc = LLAMA_3_2_1B_INST_Q4_0;
-const DELEGATE_TIMEOUT_MS = 60_000;
+const DELEGATE_TIMEOUT_MS = 120_000; // SDK's own delegate timeout — aligned with the wall guard below
+// Hard wall-clock guards. The SDK's delegate.timeout does NOT reliably fire on iOS, so a
+// failed/slow P2P link can hang forever and deadlock the UI (analyzing never resets). We race
+// every run against a wall clock; on timeout a delegated run gracefully falls back on-device.
+// Delegated completions stream token-by-token over a blind relay and can be slow, so the wall
+// is generous — too short and we'd abort a slow-but-working stream. (Delegate crux: day1 E1.)
+const DELEGATE_WALL_MS = 120_000; // generous: relayed P2P streaming can be slow; don't abort early
+const LOCAL_WALL_MS = 90_000; // on-device load+inference is seconds; a never-hit safety net
 const CTX_SIZE = 8192; // thinking models overflow the default ctx → set explicitly
 
-/** SDK delegate-failure codes (see spikes/day1-findings.md) → graceful retry on-device. */
-const DELEGATE_FAILURE_CODES = new Set([53701, 53702]);
-function isDelegateFailure(err: unknown): boolean {
-  const code = (err as { code?: unknown } | null | undefined)?.code;
-  return typeof code === "number" && DELEGATE_FAILURE_CODES.has(code);
+/** Reject if `p` doesn't settle within `ms`. On a delegated run ANY rejection (timeout,
+ *  transport drop, provider error) triggers the on-device fallback, so no error code is needed. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  // If we time out we abandon `p`; swallow any late rejection so it can't surface as an
+  // unhandled-rejection RedBox. (A late RESOLVE is harmless — runOnce unloads in its finally.)
+  p.catch(() => undefined);
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => {
+      reject(new Error(`operation timed out after ${ms}ms`));
+    }, ms);
+    p.then(
+      (v) => {
+        clearTimeout(id);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(id);
+        reject(e);
+      },
+    );
+  });
 }
 
 function labelFor(modelSrc: ModelSrc): string {
@@ -85,12 +108,16 @@ async function runReasoning(history: ChatMessage[], opts?: ExplainOptions): Prom
 
   let res: RunResult;
   try {
-    res = await runOnce(history, modelSrc, delegate);
+    res = delegate
+      ? await withTimeout(runOnce(history, modelSrc, delegate), DELEGATE_WALL_MS)
+      : await withTimeout(runOnce(history, modelSrc, undefined), LOCAL_WALL_MS);
   } catch (err) {
-    if (delegate && isDelegateFailure(err)) {
-      servedBy = "local"; // provider unreachable → run on-device
+    // Delegation is best-effort: ANY failure (timeout, ETIMEDOUT, transport drop, provider
+    // error) falls back to an on-device run so the user still gets their explanation.
+    if (delegate) {
+      servedBy = "local";
       fellBackToLocal = true;
-      res = await runOnce(history, modelSrc, undefined);
+      res = await withTimeout(runOnce(history, modelSrc, undefined), LOCAL_WALL_MS);
     } else {
       throw err;
     }
@@ -120,10 +147,10 @@ export const isOnDevice = true;
 
 export async function explain(
   reportText: string,
-  _parsed: ParsedLab,
+  parsed: ParsedLab,
   opts?: ExplainOptions,
 ): Promise<ExplainOutcome> {
-  return runReasoning(buildExplainHistory(reportText), opts);
+  return runReasoning(buildExplainHistory(reportText, formatFindings(parsed)), opts);
 }
 
 export async function followUp(

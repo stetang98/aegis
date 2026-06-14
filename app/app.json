@@ -8,7 +8,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.stetang.aegis"
+      "bundleIdentifier": "com.stetang.aegis",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Aegis connects directly to your paired laptop over your local network to run a deeper analysis privately — your health data never leaves your devices."
+      }
     },
     "plugins": [
       [

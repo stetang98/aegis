@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLabReport } from "./labparse";
+import { parseLabReport, formatFindings } from "./labparse";
 import { SAMPLE_REPORT } from "../lib/sample";
 
 describe("parseLabReport — sample report", () => {
@@ -77,5 +77,26 @@ describe("parseLabReport — robustness on untrusted input", () => {
 
   it("strips a trailing dot from the unit", () => {
     expect(parseLabReport("X .... 5 mg/dL. (ref 1-10)").values[0].unit).toBe("mg/dL");
+  });
+});
+
+describe("formatFindings", () => {
+  it("renders an authoritative block with the correct direction per tone", () => {
+    const out = formatFindings(parseLabReport(SAMPLE_REPORT));
+    expect(out).toContain("AUTHORITATIVE");
+    expect(out).toMatch(/Hemoglobin:.*BELOW range \(low\)/);
+    expect(out).toMatch(/Fasting Glucose:.*ABOVE range \(high\)/);
+    expect(out).toMatch(/LDL Cholesterol:.*ABOVE range \(high\)/);
+    expect(out).toMatch(/TSH:.*within range \(normal\)/);
+  });
+
+  it("returns an empty string when nothing parsed", () => {
+    expect(formatFindings(parseLabReport("no values here"))).toBe("");
+  });
+
+  it("still emits the block when every value is within range", () => {
+    const out = formatFindings(parseLabReport("Sodium .... 140 mmol/L (ref 135-145)"));
+    expect(out).toContain("AUTHORITATIVE");
+    expect(out).toMatch(/Sodium:.*within range \(normal\)/);
   });
 });
