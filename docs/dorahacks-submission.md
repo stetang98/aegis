@@ -181,7 +181,7 @@ cd shared && npm test        # 73 core tests
 
 ## Links
 
-- **GitHub repo:** `<GITHUB_REPO_URL>`
+- **GitHub repo:** https://github.com/stetang98/aegis
 - **Demo video:** `<DEMO_VIDEO_URL>`
 - **Build-in-public thread (X):** [@Stetang3438](https://x.com/Stetang3438) — `<X_THREAD_URL>`
 
