@@ -1,0 +1,19 @@
+Aegis — raw @qvac/sdk audit log (one demo run, captured verbatim)
+Device: MacBook Pro (Mac16,1), Apple M4, 16 GB · model LLAMA_3_2_1B_INST_Q4_0 · all on-device
+Captured from the SDK's [request-lifecycle] events + CompletionStats (provider smoke run).
+
+[sdk:server] [request-lifecycle] begin requestId=99eb1ee6-e9af-409f-9046-89cc0c4e4128 kind=loadModel modelId=- state=running
+[sdk:server] llamacpp-completion: Loading model 31b329c97909457e...
+[sdk:server] llamacpp-completion model 31b329c97909457e loaded
+[sdk:server] [request-lifecycle] end requestId=99eb1ee6-e9af-409f-9046-89cc0c4e4128 kind=loadModel modelId=- state=completed durationMs=1009
+[sdk:server] [request-lifecycle] begin requestId=e2823edc-54e4-45b5-90e4-039f15f4c3dc kind=completion modelId=31b329c97909457e state=running
+[sdk:server] [request-lifecycle] end requestId=e2823edc-54e4-45b5-90e4-039f15f4c3dc kind=completion modelId=31b329c97909457e state=completed durationMs=405
+TTFT: 312ms | tokens: 15 | gen: 102ms | ~147.1 tok/s
+[sdk:server] Model 31b329c97909457e unloaded
+[sdk:server] Unloaded 0 models
+
+--- on-device run (iPhone 15 Pro Max, A17 Pro GPU/Metal), read off the device ---
+loadModel  -> backend gpu
+completion -> TTFT 432 ms | tokens 16 | 44.6 tok/s | backend gpu | 0 network calls
+unloadModel
+(see evidence/on-device-inference.md)

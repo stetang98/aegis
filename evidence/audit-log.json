@@ -1,0 +1,28 @@
+{
+  "what": "Structured audit log of Aegis demo runs — model load/unload + per-inference performance (TTFT, tokens, tokens/sec, backend), captured from @qvac/sdk request-lifecycle events + CompletionStats. Built by shared/src/metrics/logger.ts (EvidenceRow schema).",
+  "runs": [
+    {
+      "device": "iPhone 15 Pro Max — Apple A17 Pro GPU (Metal)",
+      "model": "LLAMA_3_2_1B_INST_Q4_0",
+      "delegated": false,
+      "source": "read off the physical device; see evidence/on-device-inference.md",
+      "events": [
+        { "event": "loadModel", "state": "completed", "backend": "gpu" },
+        { "event": "completion", "state": "completed", "backend": "gpu", "ttft_ms": 432, "tokens_out": 16, "tokens_per_sec": 44.6, "network_calls": 0 },
+        { "event": "unloadModel", "state": "completed" }
+      ]
+    },
+    {
+      "device": "MacBook Pro (Mac16,1) — Apple M4, 16 GB (CPU backend)",
+      "model": "LLAMA_3_2_1B_INST_Q4_0",
+      "delegated": false,
+      "source": "provider smoke run; raw @qvac/sdk request-lifecycle in evidence/audit-log.txt",
+      "events": [
+        { "event": "loadModel", "request_id": "99eb1ee6-e9af-409f-9046-89cc0c4e4128", "state": "completed", "duration_ms": 1009 },
+        { "event": "completion", "request_id": "e2823edc-54e4-45b5-90e4-039f15f4c3dc", "state": "completed", "duration_ms": 405, "ttft_ms": 312, "tokens_out": 15, "gen_ms": 102, "tokens_per_sec": 147.1, "model_hash": "31b329c97909457e" },
+        { "event": "unloadModel", "model_hash": "31b329c97909457e", "state": "completed" }
+      ]
+    }
+  ],
+  "notes": "All inference via @qvac/sdk, on-device. The phone run is the headline edge metric (GPU, 0 network calls). The laptop run shows the same load→infer→unload lifecycle with full timing. Delegated (phone↔laptop) runs reuse the identical lifecycle over the encrypted peer link."
+}
